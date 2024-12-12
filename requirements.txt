@@ -1,6 +1,0 @@
-pandas
-boto3
-joblib
-BytesIO
-json
-datetime
