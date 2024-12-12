@@ -100,36 +100,7 @@ try:
 except Exception as e:
     st.error(f"Failed to load model and features: {str(e)}")
     st.stop()
-
-@st.cache_resource
-def get_s3_client():
-    return boto3.client(
-        "s3",
-        aws_access_key_id=st.secrets["aws_credentials"]["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=st.secrets["aws_credentials"]["AWS_SECRET_ACCESS_KEY"],
-        region_name=st.secrets["aws_credentials"]["AWS_DEFAULT_REGION"]
-    )
-
-# Initialize S3 client
-s3 = boto3.client("s3")
-
-# Function to fetch and load model and feature names from S3
-@st.cache_resource
-def load_model_and_features():
-    # Download the model from S3
-    model_obj = s3.get_object(Bucket=S3_BUCKET, Key=MODEL_KEY)
-    model = joblib.load(BytesIO(model_obj["Body"].read()))
     
-    # Download feature names from S3
-    feature_obj = s3.get_object(Bucket=S3_BUCKET, Key=FEATURES_KEY)
-    feature_names = joblib.load(BytesIO(feature_obj["Body"].read()))
-    
-    return model, feature_names
-
-# Load model and feature names
-model, feature_names = load_model_and_features()
-
-
 # App title
 st.title("Cardiovascular Disease Prediction")
 
