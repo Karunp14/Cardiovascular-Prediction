@@ -12,6 +12,15 @@ PREDICTION_FOLDER = "predictions/"  # Folder to store predictions in S3
 MODEL_KEY = "models/cardiovascular_disease_model.pkl"  # Replace with your model path in S3
 FEATURES_KEY = "models/feature_names.pkl"  # Replace with your feature names path in S3
 
+@st.cache_resource
+def get_s3_client():
+    return boto3.client(
+        "s3",
+        aws_access_key_id=st.secrets["aws_credentials"]["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=st.secrets["aws_credentials"]["AWS_SECRET_ACCESS_KEY"],
+        region_name=st.secrets["aws_credentials"]["AWS_DEFAULT_REGION"]
+    )
+
 # Initialize S3 client
 s3 = boto3.client("s3")
 
