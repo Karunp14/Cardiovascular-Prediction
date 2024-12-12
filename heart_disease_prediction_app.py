@@ -12,94 +12,28 @@ PREDICTION_FOLDER = "predictions/"  # Folder to store predictions in S3
 MODEL_KEY = "models/cardiovascular_disease_model.pkl"  # Replace with your model path in S3
 FEATURES_KEY = "models/feature_names.pkl"  # Replace with your feature names path in S3
 
-# Add debug mode
-DEBUG_MODE = True
-
-def debug_print(message):
-    if DEBUG_MODE:
-        st.write(f"DEBUG: {message}")
-
-# Check credentials at startup
-debug_print("Starting application...")
-try:
-    if 'aws_credentials' not in st.secrets:
-        st.error("AWS credentials not found in secrets!")
-        st.stop()
-    else:
-        debug_print("Found AWS credentials in secrets")
-        
-        # Print credential lengths (never print actual credentials)
-        access_key = st.secrets.aws_credentials.AWS_ACCESS_KEY_ID
-        secret_key = st.secrets.aws_credentials.AWS_SECRET_ACCESS_KEY
-        region = st.secrets.aws_credentials.AWS_DEFAULT_REGION
-        
-        debug_print(f"Access Key Length: {len(access_key)}")
-        debug_print(f"Secret Key Length: {len(secret_key)}")
-        debug_print(f"Region: {region}")
-except Exception as e:
-    st.error(f"Error accessing secrets: {str(e)}")
-    st.stop()
-
 # Initialize S3 client
-try:
-    s3 = boto3.client(
-        's3',
-        aws_access_key_id=st.secrets.aws_credentials.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=st.secrets.aws_credentials.AWS_SECRET_ACCESS_KEY,
-        region_name=st.secrets.aws_credentials.AWS_DEFAULT_REGION
-    )
-    debug_print("Created S3 client")
-except Exception as e:
-    st.error(f"Failed to create S3 client: {str(e)}")
-    st.stop()
-
-# Test S3 connection
-try:
-    response = s3.list_buckets()
-    debug_print(f"Successfully connected to AWS. Found {len(response['Buckets'])} buckets")
-except Exception as e:
-    st.error(f"Failed to list buckets: {str(e)}")
-    st.stop()
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=st.secrets.aws_credentials.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=st.secrets.aws_credentials.AWS_SECRET_ACCESS_KEY,
+    region_name=st.secrets.aws_credentials.AWS_DEFAULT_REGION
+)
 
 # Function to load model and features
 def load_model_and_features():
-    debug_print(f"Attempting to load model from bucket: {S3_BUCKET}")
-    try:
-        # Try to access the bucket
-        s3.head_bucket(Bucket=S3_BUCKET)
-        debug_print("Successfully accessed bucket")
-        
-        # Load model
-        debug_print(f"Loading model from {MODEL_KEY}")
-        model_obj = s3.get_object(Bucket=S3_BUCKET, Key=MODEL_KEY)
-        model = joblib.load(BytesIO(model_obj['Body'].read()))
-        debug_print("Model loaded successfully")
-        
-        # Load features
-        debug_print(f"Loading features from {FEATURES_KEY}")
-        feature_obj = s3.get_object(Bucket=S3_BUCKET, Key=FEATURES_KEY)
-        feature_names = joblib.load(BytesIO(feature_obj['Body'].read()))
-        debug_print("Features loaded successfully")
-        
-        return model, feature_names
-    
-    except s3.exceptions.NoSuchBucket:
-        st.error(f"Bucket {S3_BUCKET} does not exist")
-        st.stop()
-    except s3.exceptions.NoSuchKey as e:
-        st.error(f"File not found: {str(e)}")
-        st.stop()
-    except Exception as e:
-        st.error(f"Error loading model/features: {str(e)}")
-        st.stop()
+    # Load model
+    model_obj = s3.get_object(Bucket=S3_BUCKET, Key=MODEL_KEY)
+    model = joblib.load(BytesIO(model_obj['Body'].read()))
+
+    # Load features
+    feature_obj = s3.get_object(Bucket=S3_BUCKET, Key=FEATURES_KEY)
+    feature_names = joblib.load(BytesIO(feature_obj['Body'].read()))
+
+    return model, feature_names
 
 # Load model and features
-try:
-    model, feature_names = load_model_and_features()
-    debug_print("Successfully loaded model and features")
-except Exception as e:
-    st.error(f"Failed to load model and features: {str(e)}")
-    st.stop()
+model, feature_names = load_model_and_features()
     
 # App title
 st.title("Cardiovascular Disease Prediction")
