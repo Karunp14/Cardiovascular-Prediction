@@ -12,6 +12,69 @@ PREDICTION_FOLDER = "predictions/"  # Folder to store predictions in S3
 MODEL_KEY = "models/cardiovascular_disease_model.pkl"  # Replace with your model path in S3
 FEATURES_KEY = "models/feature_names.pkl"  # Replace with your feature names path in S3
 
+# Debug information
+st.write("Checking for AWS credentials...")
+if 'aws_credentials' in st.secrets:
+    st.write("✅ AWS credentials found in secrets")
+else:
+    st.error("❌ AWS credentials not found in secrets")
+    st.stop()
+
+# Initialize S3 client with credentials from secrets
+@st.cache_resource
+def get_s3_client():
+    try:
+        return boto3.client(
+            "s3",
+            aws_access_key_id=st.secrets["aws_credentials"]["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=st.secrets["aws_credentials"]["AWS_SECRET_ACCESS_KEY"],
+            region_name=st.secrets["aws_credentials"]["AWS_DEFAULT_REGION"]
+        )
+    except Exception as e:
+        st.error(f"Error initializing S3 client: {str(e)}")
+        raise e
+
+# Function to fetch and load model and feature names from S3
+@st.cache_resource
+def load_model_and_features():
+    try:
+        s3 = get_s3_client()
+        
+        # Test S3 connection
+        try:
+            s3.list_buckets()
+            st.write("✅ Successfully connected to AWS S3")
+        except Exception as e:
+            st.error(f"❌ Failed to connect to AWS S3: {str(e)}")
+            raise e
+            
+        # Download the model from S3
+        try:
+            model_obj = s3.get_object(Bucket=S3_BUCKET, Key=MODEL_KEY)
+            model = joblib.load(BytesIO(model_obj["Body"].read()))
+            st.write("✅ Model loaded successfully")
+        except ClientError as e:
+            st.error(f"❌ Error loading model: {str(e)}")
+            if e.response['Error']['Code'] == 'NoSuchBucket':
+                st.error(f"Bucket {S3_BUCKET} does not exist")
+            elif e.response['Error']['Code'] == 'NoSuchKey':
+                st.error(f"Model file {MODEL_KEY} not found in bucket")
+            raise e
+        
+        # Download feature names from S3
+        try:
+            feature_obj = s3.get_object(Bucket=S3_BUCKET, Key=FEATURES_KEY)
+            feature_names = joblib.load(BytesIO(feature_obj["Body"].read()))
+            st.write("✅ Feature names loaded successfully")
+        except ClientError as e:
+            st.error(f"❌ Error loading feature names: {str(e)}")
+            raise e
+            
+        return model, feature_names
+    except Exception as e:
+        st.error(f"Failed to load model and features: {str(e)}")
+        raise e
+
 @st.cache_resource
 def get_s3_client():
     return boto3.client(
